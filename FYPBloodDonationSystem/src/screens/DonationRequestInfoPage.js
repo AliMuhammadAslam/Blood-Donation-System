@@ -1,56 +1,44 @@
-import React, { useEffect, useState } from "react";
-import { View, Text, StyleSheet, Image, ImageBackground, ScrollView, TouchableOpacity } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, StyleSheet, Image, ImageBackground, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Header from "../components/Header";
-import checkLocation from "../components/Location";
-import { MoreOrLess } from "@rntext/more-or-less";
+import { MoreOrLess } from '@rntext/more-or-less';
 import auth from '@react-native-firebase/auth';
 import firestore from '@react-native-firebase/firestore';
-import { useNavigation } from '@react-navigation/native';
-import { faMessage } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from '@fortawesome/react-native-fontawesome';
-import { faPhone, faLocationDot, faArrowLeft } from '@fortawesome/free-solid-svg-icons'
+import { faMessage, faArrowLeft, faMagnifyingGlass } from '@fortawesome/free-solid-svg-icons';
 import MapView, { Marker } from 'react-native-maps';
 
-
 const DonationRequestInfoPage = ({ route, navigation }) => {
-
     const { docId } = route.params;
 
-    const sample_image = require('../../assets/sample_image.jpg');
-    const star = require('../../assets/star_icon.png');
     const blood_drop = require('../../assets/blood_drop.jpg');
-    const [collapsed, setCollapsed] = useState(true);
+    const star = require('../../assets/star_icon.png');
 
-    const [request, setRequest] = useState();
-    const [userDetails, setDetails] = useState();
-    const [reqID, setReqId] = useState();
+    const [request, setRequest] = useState(null);
+    const [userDetails, setDetails] = useState(null);
+    const [reqID, setReqId] = useState(null);
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const requestRef = firestore().collection('requests').doc(docId);
-        requestRef.get().then((doc) => {
-            if (doc.exists) {
-                setReqId(doc.id);
-                const userRef = firestore().collection('users').doc(doc.data().uid);
-                userRef.get().then((userDoc) => {
-                    if (userDoc.exists) {
-                        setDetails(userDoc.data());
-                    }
-                });
-                setRequest(doc.data());
-            } else {
-                console.log('Document doesnot exist.');
-            }
-        }).catch((error) => {
-            console.log('Error getting document:', error);
-        });
-
+        firestore().collection('requests').doc(docId).get()
+            .then(doc => {
+                if (doc.exists) {
+                    setReqId(doc.id);
+                    setRequest(doc.data());
+                    return firestore().collection('users').doc(doc.data().uid).get();
+                }
+            })
+            .then(userDoc => {
+                if (userDoc?.exists) setDetails(userDoc.data());
+            })
+            .catch(() => {})
+            .finally(() => setLoading(false));
     }, [docId]);
 
-
     return (
-        <SafeAreaView style={styles.container}>
-            <MapView style={styles.map}
+        <View style={styles.container}>
+            <MapView
+                style={StyleSheet.absoluteFillObject}
                 region={{
                     latitude: 24.891975,
                     longitude: 67.072861,
@@ -60,112 +48,245 @@ const DonationRequestInfoPage = ({ route, navigation }) => {
             >
                 <Marker coordinate={{ latitude: 24.891975, longitude: 67.072861 }} />
             </MapView>
-            <TouchableOpacity style={{ top: -380, marginLeft: 15, marginTop: -25 }} onPress={() => {
-                navigation.goBack();
-            }}>
-                <FontAwesomeIcon icon={faArrowLeft} size={22} color='black' />
-            </TouchableOpacity>
-            <View style={styles.infoContainer}>
-                {request && userDetails ? (
 
-                    <ScrollView>
-                        <View style={{ flexDirection: 'row', gap: 0, alignItems: 'center', width: '100%' }}>
-                            <Image style={{ width: 80, height: 80, borderRadius: 40, flex: 1 }} source={{ uri: userDetails.image }} />
-                            <View style={{flex: 2}}>
-                                <Text style={{ color: '#353535', fontSize: 20, marginTop: 10 }}>{request.userName}</Text>
-                                <Text style={{ color: '#353535', width: '80%' }}>{userDetails.address}</Text>
-                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
-                                    <Image style={{ width: 15, height: 15 }} source={star} />
-                                    <Text style={{ color: '#969696', fontSize: 12 }}>4.5/5 Ratings</Text>
+            {/* back button floated safely over the map */}
+            <SafeAreaView style={styles.backButtonWrapper} pointerEvents="box-none">
+                <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+                    <FontAwesomeIcon icon={faArrowLeft} size={20} color="black" />
+                </TouchableOpacity>
+            </SafeAreaView>
+
+            <View style={styles.infoContainer}>
+                {loading ? (
+                    <View style={styles.centered}>
+                        <ActivityIndicator color="#DE0A1E" />
+                    </View>
+                ) : !request || !userDetails ? (
+                    <View style={styles.centered}>
+                        <Text style={{ color: '#969696' }}>Could not load request details.</Text>
+                    </View>
+                ) : (
+                    <ScrollView showsVerticalScrollIndicator={false}>
+                        <View style={styles.profileRow}>
+                            <Image
+                                style={styles.avatar}
+                                source={{ uri: userDetails.image }}
+                            />
+                            <View style={{ flex: 1, marginLeft: 12 }}>
+                                <Text style={styles.userName}>{request.userName}</Text>
+                                <Text style={styles.addressText} numberOfLines={2}>{userDetails.address}</Text>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
+                                    <Image style={{ width: 14, height: 14 }} source={star} />
+                                    <Text style={{ color: '#969696', fontSize: 12 }}>4.5 / 5 Ratings</Text>
                                 </View>
                             </View>
-                            <ImageBackground style={{ width: 40, height: 60, alignItems: 'center', justifyContent: 'center'}} source={blood_drop}>
-                                <Text style={{ color: 'white', fontSize: 24, paddingTop: 15 }}>{request.bloodType}</Text>
+                            <ImageBackground
+                                style={styles.bloodDropBg}
+                                source={blood_drop}
+                            >
+                                <Text style={styles.bloodTypeText}>{request.bloodType}</Text>
                             </ImageBackground>
                         </View>
-                        <View style={{ marginTop: 10 }}>
-                            <View style={{flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between'}}>
-                                <Text style={{ color: 'black', fontSize: 18 }}>Donation Details</Text>
-                                <TouchableOpacity style={styles.chatButton} onPress={() => navigation.navigate("ChatScreen", { name: request.userName, id: request.uid })}>
 
-                                    <FontAwesomeIcon icon={faMessage} size={22} color={"#DE0A1E"} />
+                        <View style={styles.detailsSection}>
+                            <View style={styles.detailsHeader}>
+                                <Text style={styles.sectionTitle}>Donation Details</Text>
+                                <TouchableOpacity
+                                    onPress={() => navigation.navigate('ChatScreen', {
+                                        name: request.userName,
+                                        id: request.uid,
+                                    })}
+                                >
+                                    <FontAwesomeIcon icon={faMessage} size={22} color="#DE0A1E" />
                                 </TouchableOpacity>
                             </View>
-                            <Text style={styles.text}>{request.hospitalName}</Text>
-                            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
-                                <Text style={styles.text}>Request Expiry Date: </Text>
-                                <Text style={styles.text}>{request.expiryDate.toDate().toLocaleDateString()}</Text>
+
+                            <Text style={styles.hospitalText}>{request.hospitalName}</Text>
+
+                            <View style={styles.infoRow}>
+                                <Text style={styles.labelText}>Expiry Date: </Text>
+                                <Text style={styles.valueText}>
+                                    {request.expiryDate?.toDate?.()?.toLocaleDateString?.() ?? '—'}
+                                </Text>
                             </View>
-                            <MoreOrLess
-                                numberOfLines={3}
-                                textButtonStyle={{ color: '#DE0A1E' }}
-                                animated
-                                textStyle={{ color: '#353535' }}
-                            >
-                                Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has
-                                been the industry's standard dummy text ever since the 1500s, when an unknown printer took
-                                a galley of type and scrambled it to make a type specimen book. It has survived not only
-                                five centuries, but also the leap into electronic typesetting, remaining essentially
-                                unchanged. It was popularised in the 1960s with the release of Letraset sheets containing
-                                Lorem Ipsum passages, and more recently with desktop publishing software like Aldus
-                                PageMaker including versions of Lorem.{request.notes}
-                            </MoreOrLess>
+
+                            {request.notes ? (
+                                <MoreOrLess
+                                    numberOfLines={3}
+                                    textButtonStyle={{ color: '#DE0A1E' }}
+                                    animated
+                                    textStyle={{ color: '#353535', marginTop: 6, lineHeight: 20 }}
+                                >
+                                    {request.notes}
+                                </MoreOrLess>
+                            ) : null}
                         </View>
-                        <TouchableOpacity style={styles.button} onPress={() => navigation.navigate('Create Appointment', { reqId: reqID, receiverName: request.userName, receiverId: request.uid, hospital: request.hospitalName, bloodType: request.bloodType, maxDateLimit: request.expiryDate.toDate().toISOString() })}>
-                            <Text style={{ fontSize: 22, color: 'white', paddingHorizontal: 20 }}>Create An Appointment</Text>
+
+                        <TouchableOpacity
+                            style={styles.findDonorsButton}
+                            onPress={() => navigation.navigate('DonorMatches', { bloodType: request.bloodType })}
+                        >
+                            <FontAwesomeIcon icon={faMagnifyingGlass} size={16} color="#DE0A1E" />
+                            <Text style={styles.findDonorsButtonText}>Find Compatible Donors</Text>
                         </TouchableOpacity>
 
-                        <View style={{ height: 80 }}></View>
+                        <TouchableOpacity
+                            style={styles.appointmentButton}
+                            onPress={() => navigation.navigate('Create Appointment', {
+                                reqId: reqID,
+                                receiverName: request.userName,
+                                receiverId: request.uid,
+                                hospital: request.hospitalName,
+                                bloodType: request.bloodType,
+                                maxDateLimit: request.expiryDate.toDate().toISOString(),
+                            })}
+                        >
+                            <Text style={styles.appointmentButtonText}>Create An Appointment</Text>
+                        </TouchableOpacity>
+
+                        <View style={{ height: 80 }} />
                     </ScrollView>
-
-                ) : (
-
-                    <Text style={{ color: 'black' }}>Loading...</Text>
-
                 )}
-
             </View>
-        </SafeAreaView>
+        </View>
     );
 };
 
 const styles = StyleSheet.create({
     container: {
-        ...StyleSheet.absoluteFillObject,
         flex: 1,
-        justifyContent: 'flex-end',
-
     },
-    text: {
-        color: '#353535',
+    backButtonWrapper: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        zIndex: 10,
     },
-    mapContainer: {
-        width: '100%',
-        height: '100%',
-    },
-    map: {
-        width: '100%',
-        height: '100%',
+    backButton: {
+        margin: 16,
+        width: 38,
+        height: 38,
+        borderRadius: 19,
+        backgroundColor: 'white',
+        alignItems: 'center',
+        justifyContent: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.2,
+        shadowRadius: 2,
+        elevation: 3,
     },
     infoContainer: {
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
         backgroundColor: 'white',
-        width: '100%',
-        height: '45%',
-        borderTopRightRadius: 40,
-        borderTopLeftRadius: 40,
-        paddingHorizontal: 20
+        height: '48%',
+        borderTopLeftRadius: 30,
+        borderTopRightRadius: 30,
+        paddingHorizontal: 20,
+        paddingTop: 16,
     },
-    button: {
+    centered: {
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    profileRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 12,
+    },
+    avatar: {
+        width: 70,
+        height: 70,
+        borderRadius: 35,
+    },
+    userName: {
+        color: '#353535',
+        fontSize: 18,
+        fontWeight: '600',
+    },
+    addressText: {
+        color: '#969696',
+        fontSize: 13,
+        marginTop: 2,
+    },
+    bloodDropBg: {
+        width: 38,
+        height: 56,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    bloodTypeText: {
+        color: 'white',
+        fontSize: 14,
+        fontWeight: 'bold',
+        marginTop: 12,
+    },
+    detailsSection: {
+        marginTop: 4,
+    },
+    detailsHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginBottom: 6,
+    },
+    sectionTitle: {
+        color: 'black',
+        fontSize: 17,
+        fontWeight: '600',
+    },
+    hospitalText: {
+        color: '#353535',
+        fontSize: 15,
+        marginBottom: 4,
+    },
+    infoRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 4,
+    },
+    labelText: {
+        color: '#353535',
+        fontSize: 14,
+    },
+    valueText: {
+        color: '#969696',
+        fontSize: 14,
+    },
+    findDonorsButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+        marginTop: 14,
+        borderWidth: 1.5,
+        borderColor: '#DE0A1E',
+        borderRadius: 10,
+        paddingVertical: 11,
+    },
+    findDonorsButtonText: {
+        fontSize: 16,
+        color: '#DE0A1E',
+        fontWeight: '500',
+    },
+    appointmentButton: {
         backgroundColor: '#DE0A1E',
-        marginTop: 15,
+        marginTop: 10,
         justifyContent: 'center',
         alignItems: 'center',
         borderRadius: 10,
-        paddingVertical: 5
+        paddingVertical: 12,
     },
-    chatButton: {
-        // top: -15,
-    }
+    appointmentButtonText: {
+        fontSize: 18,
+        color: 'white',
+        fontWeight: '500',
+    },
 });
 
 export default DonationRequestInfoPage;

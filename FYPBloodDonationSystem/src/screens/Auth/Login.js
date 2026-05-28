@@ -1,5 +1,5 @@
-import React from 'react';
-import { SafeAreaView, StyleSheet, Text, TouchableOpacity, View, Alert } from 'react-native';
+import React, { useState } from 'react';
+import { SafeAreaView, StyleSheet, Text, TouchableOpacity, View, Alert, ActivityIndicator } from 'react-native';
 import { TextInput } from 'react-native-paper';
 import auth from '@react-native-firebase/auth';
 import firestore from '@react-native-firebase/firestore';
@@ -9,89 +9,69 @@ import { useNavigation } from '@react-navigation/native';
 const Login = () => {
   const navigation = useNavigation();
 
-  const [email, onChangeEmail] = React.useState('');
-  const [password, onChangePassword] = React.useState('');
-  const [isVisible, setIsVisible] = React.useState(true);
-  const userLogin = () => {
+  const [email, onChangeEmail] = useState('');
+  const [password, onChangePassword] = useState('');
+  const [isVisible, setIsVisible] = useState(true);
+  const [loading, setLoading] = useState(false);
 
-    if (email.length == 0 || password.length == 0) {
-
-      Alert.alert('Please fill in the required fields')
-
-    }
-    else {
-
-      auth()
-        .signInWithEmailAndPassword(email, password)
-        .then(() => {
-          console.log('Signed in!');
-
-          const usersRef = firestore().collection('users').doc(auth().currentUser.uid);
-
-          usersRef.get().then((doc) => {
-            if (doc.exists) {
-              const id = auth().currentUser.uid;
-              if (doc.data().isOrg) {
-                navigation.navigate('TabNavigationOrganizations');
-                console.log("user: ", doc.data());
-                AsyncStorage.setItem('@user_Id', JSON.stringify(id));
-                AsyncStorage.setItem('@user_data', JSON.stringify(doc.data()));
-              }
-              else {
-                console.log(id + " " + doc.data().name);
-                console.log("user: ", doc.data());
-                AsyncStorage.setItem('@user_Id', JSON.stringify(id));
-                AsyncStorage.setItem('@user_data', JSON.stringify(doc.data()));
-                navigation.navigate('TabNavigation');
-              }
-            } else {
-              console.log('Document doesnot exist.');
-              Alert.alert('User does not exist. Kindly Signin')
-            }
-          }).catch((error) => {
-            console.log('Error getting document:', error);
-          });
-
-
-
-        })
-        .catch(error => {
-
-          if (error.code === 'auth/user-not-found') {
-            console.log('User not found!');
-          }
-
-          if (error.code === 'auth/wrong-password') {
-            console.log('That password is invalid!');
-          }
-
-          Alert.alert(error.code);
-
-          console.error(error);
-        });
-
+  const userLogin = async () => {
+    if (email.trim().length === 0 || password.length === 0) {
+      Alert.alert('Missing Fields', 'Please enter your email and password.');
+      return;
     }
 
-  }
+    setLoading(true);
+    try {
+      const userCredential = await auth().signInWithEmailAndPassword(email.trim(), password);
 
+      const uid = userCredential.user.uid;
+      const doc = await firestore().collection('users').doc(uid).get();
+
+      if (!doc.exists) {
+        Alert.alert('Error', 'User record not found. Please sign up.');
+        return;
+      }
+
+      await AsyncStorage.setItem('@user_Id', JSON.stringify(uid));
+      await AsyncStorage.setItem('@user_data', JSON.stringify(doc.data()));
+
+      if (doc.data().isOrg) {
+        navigation.navigate('TabNavigationOrganizations');
+      } else {
+        navigation.navigate('TabNavigation');
+      }
+    } catch (error) {
+      let msg = 'Login failed. Please try again.';
+      if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
+        msg = 'Incorrect email or password.';
+      } else if (error.code === 'auth/invalid-email') {
+        msg = 'Please enter a valid email address.';
+      } else if (error.code === 'auth/too-many-requests') {
+        msg = 'Too many failed attempts. Please try again later.';
+      }
+      Alert.alert('Login Failed', msg);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <SafeAreaView style={styles.container}>
       <Text style={styles.header}>Login</Text>
+
       <TextInput
         style={styles.input}
         onChangeText={onChangeEmail}
         value={email}
         placeholder="Email Address"
-        inputMode='email'
-        keyboardType='email-address'
+        inputMode="email"
+        keyboardType="email-address"
+        autoCapitalize="none"
         placeholderTextColor="#808080"
-        mode='outlined'
-        outlineStyle={{
-          borderRadius: 10,
-          borderColor: '#969696'
-        }}
+        mode="outlined"
+        outlineStyle={{ borderRadius: 10, borderColor: '#969696' }}
       />
+
       <TextInput
         style={styles.input}
         onChangeText={onChangePassword}
@@ -100,47 +80,39 @@ const Login = () => {
         right={
           <TextInput.Icon
             icon={isVisible ? require('../../../assets/eye-off.png') : require('../../../assets/eye.png')}
-            iconColor='#969696'
-            onPress={() =>
-              setIsVisible(!isVisible)
-            }
+            iconColor="#969696"
+            onPress={() => setIsVisible(!isVisible)}
           />
         }
         placeholder="Password"
         placeholderTextColor="#808080"
-        mode='outlined'
-        outlineStyle={{
-          borderRadius: 10,
-          borderColor: '#969696'
-        }}
+        mode="outlined"
+        outlineStyle={{ borderRadius: 10, borderColor: '#969696' }}
       />
 
-      <TouchableOpacity style={styles.button} onPress={userLogin}>
-        <Text style={styles.btnText}>Log In</Text>
-
+      <TouchableOpacity style={[styles.button, loading && { opacity: 0.6 }]} onPress={userLogin} disabled={loading}>
+        {loading
+          ? <ActivityIndicator color="white" />
+          : <Text style={styles.btnText}>Log In</Text>
+        }
       </TouchableOpacity>
 
       <View style={styles.footer}>
         <Text style={{ color: '#353535' }}>Don't have an account?</Text>
-        <TouchableOpacity onPress={() => {
-          navigation.navigate('SignupFirst')
-        }}>
-          <Text style={{ color: "#DE0A1E" }}>Signup</Text>
+        <TouchableOpacity onPress={() => navigation.navigate('SignupFirst')}>
+          <Text style={{ color: '#DE0A1E' }}>Signup</Text>
         </TouchableOpacity>
       </View>
 
       <View style={styles.footer}>
         <Text style={{ color: '#353535' }}>Forgot your password?</Text>
-        <TouchableOpacity onPress={() => {
-          navigation.navigate('ForgotPassword')
-        }}>
-          <Text style={{ color: "#DE0A1E" }}>Forgot Password</Text>
+        <TouchableOpacity onPress={() => navigation.navigate('ForgotPassword')}>
+          <Text style={{ color: '#DE0A1E' }}>Forgot Password</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>
   );
-}
-
+};
 
 const styles = StyleSheet.create({
   container: {
@@ -148,17 +120,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     padding: 30,
-    backgroundColor: 'white'
+    backgroundColor: 'white',
   },
   header: {
     fontSize: 30,
     marginBottom: 30,
-    color: "black",
+    color: 'black',
   },
   input: {
     width: '100%',
     marginBottom: 12,
-    backgroundColor: "white",
+    backgroundColor: 'white',
   },
   button: {
     width: '100%',
@@ -167,19 +139,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     elevation: 3,
-    backgroundColor: "#DE0A1E",
+    backgroundColor: '#DE0A1E',
     borderRadius: 10,
   },
   btnText: {
     fontSize: 18,
-    color: "white",
+    color: 'white',
   },
   footer: {
     flexDirection: 'row',
     gap: 10,
     marginTop: 10,
     justifyContent: 'center',
-    alignItems: 'center'
+    alignItems: 'center',
   },
 });
 

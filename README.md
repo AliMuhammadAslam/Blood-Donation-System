@@ -1,5 +1,18 @@
 # FYP Blood Donation System
 
+<p align="left">
+  <img src="https://img.shields.io/badge/React_Native-0.71.7-61DAFB?style=for-the-badge&logo=react&logoColor=black" alt="React Native">
+  <img src="https://img.shields.io/badge/Firebase-FFCA28?style=for-the-badge&logo=firebase&logoColor=black" alt="Firebase">
+  <img src="https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript">
+  <img src="https://img.shields.io/badge/Android-34A853?style=for-the-badge&logo=android&logoColor=white" alt="Android">
+  <img src="https://img.shields.io/badge/React_Navigation-6-6B52AE?style=for-the-badge&logo=react&logoColor=white" alt="React Navigation">
+  <img src="https://img.shields.io/badge/Google_Sign--In-4285F4?style=for-the-badge&logo=google&logoColor=white" alt="Google Sign-In">
+  <img src="https://img.shields.io/badge/Firestore-FF6F00?style=for-the-badge&logo=firebase&logoColor=white" alt="Firestore">
+  <img src="https://img.shields.io/badge/React_Native_Maps-2D9CDB?style=for-the-badge&logo=googlemaps&logoColor=white" alt="React Native Maps">
+  <img src="https://img.shields.io/badge/Gifted_Chat-DE0A1E?style=for-the-badge" alt="Gifted Chat">
+  <img src="https://img.shields.io/badge/Notifee-333333?style=for-the-badge" alt="Notifee">
+</p>
+
 A full-featured mobile application built with **React Native** that connects blood donors, recipients, and blood bank organizations in real time. Developed as a Final Year Project (FYP).
 
 ---

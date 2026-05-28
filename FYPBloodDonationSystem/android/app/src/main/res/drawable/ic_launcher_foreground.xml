@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Adaptive icon foreground — 108 × 108 dp canvas.
+    The "safe zone" where content is guaranteed to be visible on every
+    launcher mask shape (circle, squircle, rounded-square, etc.) is the
+    centre 72 × 72 dp area (i.e. 18 dp inset on every side).
+
+    All paths below are kept within that safe zone.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!--
+        Blood-drop (teardrop) shape.
+        - Pointed tip at the top  : (54, 20)
+        - Circle centre           : (54, 60), radius 24
+        - Leftmost edge           : (30, 60)  — well inside the 18 dp safe boundary
+        - Rightmost edge          : (78, 60)  — well inside the 90 dp safe boundary
+        - Bottom of circle        : (54, 84)  — well inside the 90 dp safe boundary
+    -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="
+            M 54,20
+            C 61,30 78,46 78,60
+            A 24,24 0 0 1 30,60
+            C 30,46 47,30 54,20 Z" />
+
+    <!--
+        Small cross (+) cut-out near the centre of the drop.
+        Rendered in the brand red so it appears as a transparent window
+        showing the background through — a subtle medical / first-aid cue.
+        Cross centre: (54, 55).  Bar dimensions: 14 × 5 dp each arm.
+    -->
+    <path
+        android:fillColor="#DE0A1E"
+        android:pathData="
+            M 47,52.5 L 47,57.5 L 51.5,57.5 L 51.5,62 L 56.5,62
+            L 56.5,57.5 L 61,57.5 L 61,52.5 L 56.5,52.5 L 56.5,48
+            L 51.5,48 L 51.5,52.5 Z" />
+
+</vector>

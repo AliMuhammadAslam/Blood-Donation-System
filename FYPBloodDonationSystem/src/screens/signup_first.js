@@ -1,41 +1,21 @@
 import React, { useState } from 'react';
-import { Colors } from 'react-native/Libraries/NewAppScreen';
-import { Alert, BackHandler, SafeAreaView, StyleSheet, Text, TextInput, TouchableOpacity, useColorScheme, View } from 'react-native';
+import { Alert, BackHandler, SafeAreaView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import DropDownPicker from 'react-native-dropdown-picker';
-import { Dropdown } from 'react-native-dropdown';
-import SelectDropdown from 'react-native-select-dropdown';
-import { NavigationContainer, useNavigation } from '@react-navigation/native';
-import auth from '@react-native-firebase/auth';
-import firestore from '@react-native-firebase/firestore';
+import { useNavigation } from '@react-navigation/native';
 
 function Signup_first() {
-  // const isDarkMode = useColorScheme() === 'dark';
-  // const backgroundStyle = {
-  //     backgroundColor: isDarkMode ? Colors.darker : Colors.lighter,
-  // };
+  const navigation = useNavigation();
+
   React.useEffect(() => {
-    const backAction = () => {
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
       Alert.alert('Hold on!', 'Are you sure you want to exit the app?', [
-        {
-          text: 'Cancel',
-          onPress: () => null,
-          style: 'cancel',
-        },
+        { text: 'Cancel', onPress: () => null, style: 'cancel' },
         { text: 'YES', onPress: () => BackHandler.exitApp() },
       ]);
       return true;
-    };
-
-    const backHandler = BackHandler.addEventListener(
-      'hardwareBackPress',
-      //backAction,
-      () => true,
-    );
-
+    });
     return () => backHandler.remove();
   }, []);
-
-  const navigation = useNavigation();
 
   const [genderOpen, setGenderOpen] = useState(false);
   const [genderValue, setGenderValue] = useState(null);
@@ -43,7 +23,6 @@ function Signup_first() {
     { label: 'Male', value: 'male' },
     { label: 'Female', value: 'female' },
   ]);
-  console.log(genderValue);
 
   const [emergencyOpen, setEmergencyOpen] = useState(false);
   const [emergencyDonorValue, setEmergencyDonorValue] = useState(null);
@@ -51,7 +30,6 @@ function Signup_first() {
     { label: 'Yes', value: 'Yes' },
     { label: 'No', value: 'No' },
   ]);
-  console.log(genderValue);
 
   const [bloodOpen, setBloodOpen] = useState(false);
   const [bloodValue, setBloodValue] = useState(null);
@@ -65,59 +43,44 @@ function Signup_first() {
     { label: 'B-', value: 'b-' },
     { label: 'AB-', value: 'ab-' },
   ]);
-  console.log(bloodValue);
 
-  const [email, onChangeEmail] = React.useState('');
-  const [password, onChangePassword] = React.useState('');
-  const [mobileNumber, onChangeMobNum] = React.useState('');
-  const [address, onChangeAddress] = React.useState('');
-  const [name, onChangeName] = React.useState('');
+  const [email, onChangeEmail] = useState('');
+  const [mobileNumber, onChangeMobNum] = useState('');
+  const [address, onChangeAddress] = useState('');
+  const [name, onChangeName] = useState('');
 
-  // const userSignUp = async () => {
+  const isValidEmail = (val) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val.trim());
+  const isValidPhone = (val) => /^[0-9+\s\-]{10,15}$/.test(val.trim());
 
-  //   if(email.length == 0 || password.length == 0 || name.length == 0 || mobileNumber.length == 0 || address.length == 0 || genderValue == null || bloodValue == null){
-  //     Alert.alert("Please provide the required information");
-  //   }
-  //   else{
+  const handleProceed = () => {
+    if (!name.trim() || !email.trim() || !mobileNumber.trim() || !address.trim() || !genderValue || !bloodValue || !emergencyDonorValue) {
+      Alert.alert('Missing Information', 'Please fill in all fields before proceeding.');
+      return;
+    }
 
-  //     try {
-  //       const userCredential = await auth().createUserWithEmailAndPassword(email, password);
-  //       const { uid } = userCredential.user;
+    if (!isValidEmail(email)) {
+      Alert.alert('Invalid Email', 'Please enter a valid email address.');
+      return;
+    }
 
-  //       const userRef = firestore().collection('users').doc(uid);
-  //       await userRef.set({
-  //         name,
-  //         address,
-  //         mobileNumber,
-  //         genderValue,
-  //         bloodValue,
-  //         email,
-  //         password
-  //       });
+    if (!isValidPhone(mobileNumber)) {
+      Alert.alert('Invalid Phone Number', 'Please enter a valid mobile number (10–15 digits).');
+      return;
+    }
 
-  //       navigation.navigate('Slideshow');
-
-  //     } catch (error) {
-  //       console.log(error.code);
-  //       Alert.alert(error.code);
-
-  //     }
-
-  //   }
-
-  // };
-
+    navigation.navigate('SignupSecond', {
+      name: name.trim(),
+      address: address.trim(),
+      mobileNumber: mobileNumber.trim(),
+      genderValue,
+      bloodValue,
+      isEmergencyDonor: emergencyDonorValue,
+      email: email.trim(),
+    });
+  };
 
   return (
-
-    <SafeAreaView style={[
-      {//styles.container
-        justifyContent: 'center',
-        alignItems: 'center',
-        flex: 1,
-      },
-      //backgroundStyle
-    ]}>
+    <SafeAreaView style={styles.container}>
       <Text style={styles.header}>Signup</Text>
 
       <TextInput
@@ -126,9 +89,6 @@ function Signup_first() {
         value={name}
         placeholder="Full Name"
         placeholderTextColor="#808080"
-
-      //inputMode='email'
-      //keyboardType=''
       />
 
       <TextInput
@@ -136,14 +96,15 @@ function Signup_first() {
         onChangeText={onChangeEmail}
         value={email}
         placeholder="Email Address"
-        inputMode='email'
-        keyboardType='email-address'
+        inputMode="email"
+        keyboardType="email-address"
+        autoCapitalize="none"
         placeholderTextColor="#808080"
       />
 
       <View style={styles.dropdown}>
         <DropDownPicker
-          placeholder='Gender'
+          placeholder="Gender"
           open={genderOpen}
           value={genderValue}
           items={genderItems}
@@ -159,8 +120,8 @@ function Signup_first() {
         onChangeText={onChangeMobNum}
         value={mobileNumber}
         placeholder="Mobile Number"
-        inputMode='numeric'
-        keyboardType='numeric'
+        inputMode="numeric"
+        keyboardType="numeric"
         placeholderTextColor="#808080"
       />
 
@@ -170,13 +131,11 @@ function Signup_first() {
         value={address}
         placeholder="Address"
         placeholderTextColor="#808080"
-      //inputMode='email'
-      //keyboardType=''
       />
 
       <View style={styles.dropdown}>
         <DropDownPicker
-          placeholder='Blood Group'
+          placeholder="Blood Group"
           open={bloodOpen}
           value={bloodValue}
           items={bloodItems}
@@ -184,18 +143,18 @@ function Signup_first() {
           setValue={setBloodValue}
           setItems={setBloodItems}
           theme="LIGHT"
-          dropDownDirection='TOP'
+          dropDownDirection="TOP"
           listMode="MODAL"
           searchable={true}
           scrollViewProps={true}
         />
       </View>
 
-      <View style={{padding:8}} />
+      <View style={{ padding: 8 }} />
 
       <View style={styles.dropdown}>
         <DropDownPicker
-          placeholder='Do you want to be registered as an Emergency Donor?'
+          placeholder="Do you want to be registered as an Emergency Donor?"
           open={emergencyOpen}
           value={emergencyDonorValue}
           items={emergencyItems}
@@ -206,47 +165,16 @@ function Signup_first() {
         />
       </View>
 
-      <View style={{padding:4}} />
+      <View style={{ padding: 4 }} />
 
-      {/* <TextInput
-          style={styles.input}
-          onChangeText={onChangePassword}
-          value={password}
-          secureTextEntry={true}
-          placeholder="Password"
-          placeholderTextColor= "#808080"
-        /> */}
-
-      <TouchableOpacity style={styles.button} onPress={() => {
-
-        if(email.length == 0 || name.length == 0 || mobileNumber.length == 0 || address.length == 0 || genderValue == null || bloodValue == null || emergencyDonorValue == null){
-          Alert.alert("Please provide the required information");
-        }
-        else{
-
-          navigation.navigate('SignupSecond', {
-            name: name,
-            address: address,
-            mobileNumber: mobileNumber,
-            genderValue: genderValue,
-            bloodValue: bloodValue,
-            isEmergencyDonor: emergencyDonorValue,
-            email: email,
-            //password
-          })
-
-        }
-
-        }
-      } >
+      <TouchableOpacity style={styles.button} onPress={handleProceed}>
         <Text style={styles.btnText}>Proceed</Text>
       </TouchableOpacity>
+
       <View style={styles.footer}>
         <Text style={{ color: '#353535' }}>Already have an account?</Text>
-        <TouchableOpacity onPress={() => {
-          navigation.navigate('Login')
-        }}>
-          <Text style={{ color: "#DE0A1E" }}>Login</Text>
+        <TouchableOpacity onPress={() => navigation.navigate('Login')}>
+          <Text style={{ color: '#DE0A1E' }}>Login</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -254,35 +182,32 @@ function Signup_first() {
 }
 
 const styles = StyleSheet.create({
+  container: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    flex: 1,
+  },
   input: {
     height: 40,
     width: 300,
     margin: 12,
     borderWidth: 1,
     padding: 12,
-    //elevation: 20,
     borderRadius: 8,
-    color: "black",
-    backgroundColor: "white",
-    //backgroundColor: "white",
-  },
-  container: {
-    justifyContent: 'center',
-    alignItems: 'center',
-    flex: 1,
-    //width: "80%",
+    color: 'black',
+    backgroundColor: 'white',
   },
   header: {
     fontSize: 30,
     marginBottom: 30,
-    color: "black",
+    color: 'black',
   },
   footer: {
     flexDirection: 'row',
     gap: 10,
     marginTop: 10,
     justifyContent: 'center',
-    alignItems: 'center'
+    alignItems: 'center',
   },
   button: {
     width: 300,
@@ -291,12 +216,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     elevation: 3,
-    backgroundColor: "#DE0A1E",
+    backgroundColor: '#DE0A1E',
     borderRadius: 10,
   },
   btnText: {
     fontSize: 18,
-    color: "white",
+    color: 'white',
   },
   dropdown: {
     backgroundColor: '#171717',

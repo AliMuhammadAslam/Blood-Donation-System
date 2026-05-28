@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View, Image, ScrollView } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View, Image, ScrollView, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import HomeHeader from '../../components/HomeHeader';
 import { FontAwesomeIcon } from '@fortawesome/react-native-fontawesome';
@@ -94,17 +94,24 @@ const OrgHomeScreen = ({ navigation }) => {
     }
 
     useEffect(() => {
+        const uid = auth().currentUser?.uid;
+        if (!uid) {
+            navigation.replace('Login');
+            return;
+        }
 
-        const userRef = firestore().collection('users').doc(auth().currentUser.uid);
+        const userRef = firestore().collection('users').doc(uid);
 
         userRef.get().then((doc) => {
             if (doc.exists) {
+                if (!doc.data().isOrg) {
+                    navigation.replace('TabNavigation');
+                    return;
+                }
                 setDetails(doc.data());
-            } else {
-                console.log('Document doesnot exist.');
             }
-        }).catch((error) => {
-            console.log('Error getting document:', error);
+        }).catch(() => {
+            Alert.alert('Error', 'Could not load your profile. Please try again.');
         });
 
     }, []);

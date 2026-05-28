@@ -34,6 +34,13 @@ local.properties
 *.keystore
 !debug.keystore
 
+# Firebase config — do not commit these to public repos
+google-services.json
+GoogleService-Info.plist
+
+# Environment variables — contains API keys, never commit
+.env
+
 # node.js
 #
 node_modules/
@@ -61,4 +68,12 @@ yarn-error.log
 
 # Temporary files created by Metro to check the health of the file watcher
 .metro-health-check*
+
+# Generated JS bundle and scaled image assets (rebuilt on every bundle command)
+android/app/src/main/assets/index.android.bundle
+android/app/src/main/res/drawable-hdpi/
+android/app/src/main/res/drawable-mdpi/
+android/app/src/main/res/drawable-xhdpi/
+android/app/src/main/res/drawable-xxhdpi/
+android/app/src/main/res/drawable-xxxhdpi/
 

@@ -21,6 +21,7 @@ const AccountStack = () => {
                 <Stack.Screen name="AccountScreen" component={AccountScreen} />
                 <Stack.Screen name="EditProfile" component={EditProfile} />
                 <Stack.Screen name="History" component={History} />
+                <Stack.Screen name="ManageAddresses" component={ManageAddresses} />
                 <Stack.Screen name="OrganizationsList" component={OrganizationsList} />
                 <Stack.Screen name="OrganizationInfo" component={OrganisationInfo} />
                 <Stack.Screen name="ApplicationForm" component={ApplicationForm} />

@@ -1,137 +1,152 @@
 import React, { useState } from 'react';
-import { Colors } from 'react-native/Libraries/NewAppScreen';
-import { SafeAreaView, StyleSheet, Text, TextInput, TouchableOpacity, useColorScheme, View, Image } from 'react-native';
-import DropDownPicker from 'react-native-dropdown-picker';
-import { Dropdown } from 'react-native-dropdown';
-import SelectDropdown from 'react-native-select-dropdown';
-import ConfirmationCodeInput from 'react-native-confirmation-code-input';
-import Header from "../../components/Header";
-
-  
+import { SafeAreaView, StyleSheet, Text, TouchableOpacity, View, Image, Alert, ActivityIndicator } from 'react-native';
+import auth from '@react-native-firebase/auth';
+import firestore from '@react-native-firebase/firestore';
+import { useNavigation } from '@react-navigation/native';
+import Header from '../../components/Header';
 
 const OTPVerification = () => {
-  const isDarkMode = useColorScheme() === 'dark';
-  const backgroundStyle = {
-    backgroundColor: isDarkMode ? Colors.darker : Colors.lighter,
+  const navigation = useNavigation();
+
+  const [checking, setChecking] = useState(false);
+  const [resending, setResending] = useState(false);
+
+  const checkVerification = async () => {
+    setChecking(true);
+    try {
+      await auth().currentUser.reload();
+      const user = auth().currentUser;
+
+      if (user.emailVerified) {
+        // check if this user has already completed the questionnaire
+        const userDoc = await firestore().collection('users').doc(user.uid).get();
+        const hasCompletedQuestionnaire = userDoc.exists && !!userDoc.data().questionnaireCompletedAt;
+
+        if (hasCompletedQuestionnaire) {
+          navigation.navigate('TabNavigation');
+        } else {
+          navigation.navigate('Questionnaire');
+        }
+      } else {
+        Alert.alert(
+          'Not Verified Yet',
+          'We could not confirm your email yet. Please open the link in the email we sent you, then try again.'
+        );
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Something went wrong. Please try again.');
+    } finally {
+      setChecking(false);
+    }
   };
 
-  
+  const resendEmail = async () => {
+    setResending(true);
+    try {
+      await auth().currentUser.sendEmailVerification();
+      Alert.alert('Email Sent', 'A new verification link has been sent to your email.');
+    } catch (error) {
+      let msg = 'Could not resend the email. Please try again.';
+      if (error.code === 'auth/too-many-requests') {
+        msg = 'Too many requests. Please wait a moment before trying again.';
+      }
+      Alert.alert('Error', msg);
+    } finally {
+      setResending(false);
+    }
+  };
 
-  
   return (
-    <SafeAreaView style={[
-      {//styles.container
-        justifyContent: 'center',
-        alignItems: 'center',
-        flex: 1,
-      },
-      backgroundStyle
-    ]}>
+    <SafeAreaView style={styles.container}>
+      <Header title="Verify Your Email" isRed={true} />
 
-      
+      <Image
+        style={styles.image}
+        resizeMode="contain"
+        source={require('../../../assets/OTP-Verification.png')}
+      />
 
-      <Header title="OTP Verification" isRed={true} />
-      <View
+      <Text style={styles.title}>Check your inbox</Text>
+      <Text style={styles.subtitle}>
+        We sent a verification link to your email address. Open it to verify your account, then come back and tap the button below.
+      </Text>
 
-        style={{
-          backgroundColor: isDarkMode ? Colors.black : Colors.white,
-        }}>
-
-        <Image style={styles.image}
-            resizeMode={'contain'}
-            source={require('../../../assets/OTP-Verification.png')} />  
-
-      </View>
-
-    
-      <Text style={{marginLeft:40, marginRight:40, marginTop:10, fontSize:20}}>Enter your 5 digit verification code here.</Text>
-      
-      
-     
-        <ConfirmationCodeInput      
-            codeLength={5}  
-            activeColor='rgba(49, 180, 4, 1)'
-            inactiveColor='rgba(49, 180, 4, 1.3)'
-            autoFocus={false}
-            ignoreCase={true}
-            inputPosition='center'
-            size={50}
-            codeInputStyle={{ borderWidth: 1.5, fontWeight: '800' }}
-            // onFulfill={(isValid, code) => this._onFinishCheckingCode1(isValid, code)}
-            onFulfill={(code, isValid) => console.log(code, isValid)}
-            containerStyle={{ marginTop: 30}}
-            //codeInputStyle={{ fontWeight: '800' }}
-            keyboardType='numeric'
-            
-        />
-
-
-
-
-
-      <TouchableOpacity style={styles.button}>
-        <Text style={styles.btnText}>Verify</Text>
+      <TouchableOpacity
+        style={[styles.button, checking && { opacity: 0.6 }]}
+        onPress={checkVerification}
+        disabled={checking}
+      >
+        {checking
+          ? <ActivityIndicator color="white" />
+          : <Text style={styles.btnText}>I've Verified My Email</Text>
+        }
       </TouchableOpacity>
 
-      {/* <View style={styles.button}>
-            <Button title="Log In" />
-        </View> */}
-      <Text style={styles.footer}>Did not receive a code?<TouchableOpacity
-      // onPress={() =>
-      //   navigation.navigate('Signup')
-      // }
-      >
-        <Text style={{color: "#DE0A1E"}}>Resend</Text></TouchableOpacity></Text>
-
+      <View style={styles.resendRow}>
+        <Text style={styles.footerText}>Didn't receive an email?</Text>
+        <TouchableOpacity onPress={resendEmail} disabled={resending}>
+          {resending
+            ? <ActivityIndicator size="small" color="#DE0A1E" />
+            : <Text style={styles.resendText}>Resend</Text>
+          }
+        </TouchableOpacity>
+      </View>
     </SafeAreaView>
   );
-}
-
+};
 
 const styles = StyleSheet.create({
-  input: {
-    height: 40,
-    width: 300,
-    margin: 12,
-    borderWidth: 1,
-    padding: 12,
-    //elevation: 20,
-    borderRadius: 5,
-    //backgroundColor: "white",
-  },
   container: {
+    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    flex: 1,
-    //width: "80%",
+    paddingHorizontal: 30,
   },
-  header: {
-    fontSize: 30,
-    marginBottom: 25,
-    marginTop: 25,
+  image: {
+    height: 150,
+    width: 150,
+    marginBottom: 20,
   },
-  footer: {
-    margin: 10,
+  title: {
+    fontSize: 22,
+    fontWeight: '600',
+    color: '#353535',
+    marginBottom: 10,
+  },
+  subtitle: {
+    fontSize: 15,
+    color: '#969696',
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: 30,
   },
   button: {
-    width: 300,
-    height: 40,
-    margin: 10,
+    width: '100%',
+    height: 45,
     alignItems: 'center',
     justifyContent: 'center',
-    // paddingVertical: 12,
-    // paddingHorizontal: 32,
-    backgroundColor: "#DE0A1E",
-    borderRadius: 5,
+    backgroundColor: '#DE0A1E',
+    borderRadius: 10,
+    marginBottom: 16,
   },
   btnText: {
-    fontSize: 18,
-    color: "white",
+    fontSize: 17,
+    color: 'white',
+    fontWeight: '500',
   },
-    image: {
-        height: 150,
-        width: 150,
-    },
+  resendRow: {
+    flexDirection: 'row',
+    gap: 8,
+    alignItems: 'center',
+  },
+  footerText: {
+    color: '#353535',
+    fontSize: 14,
+  },
+  resendText: {
+    color: '#DE0A1E',
+    fontSize: 14,
+  },
 });
 
 export default OTPVerification;

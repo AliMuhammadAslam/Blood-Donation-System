@@ -1,210 +1,307 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View, Image, ScrollView } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View, Image, ScrollView, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import HomeHeader from '../../components/HomeHeader';
 import { FontAwesomeIcon } from '@fortawesome/react-native-fontawesome';
-import { faLocationDot, faDroplet } from '@fortawesome/free-solid-svg-icons';
+import { faLocationDot, faDroplet, faRobot, faArrowRight } from '@fortawesome/free-solid-svg-icons';
 import Slideshow from '../../components/slideshow';
 import auth from '@react-native-firebase/auth';
 import firestore from '@react-native-firebase/firestore';
 
+const BLOOD_GROUPS = ['A+', 'O+', 'B+', 'AB+', 'A-', 'O-', 'B-', 'AB-'];
 
 const HomeScreen = ({ navigation }) => {
     const blood_bank_icon = require('../../../assets/bloodbank.png');
     const emergency_donor = require('../../../assets/emergencydonor.png');
     const post_request = require('../../../assets/envelope.png');
-    const blood_drop = require('../../../assets/blood_drop.jpg')
+    const blood_drop = require('../../../assets/blood_drop.jpg');
 
-    const [userDetails, setDetails] = useState();
+    const [userDetails, setDetails] = useState(null);
+    const [requests, setRequests] = useState([]);
+    const [loadingRequests, setLoadingRequests] = useState(true);
 
     const HomeBoxData = [
         { icon: <Image style={{ width: 65, height: 55, marginTop: 10 }} source={post_request} />, title: 'Post Blood Request', route: 'CreateRequest' },
-        { icon: <Image style={{ width: 70, height: 90, }} source={blood_bank_icon} />, title: 'Blood Bank', route: 'My Organizations' },
-        { icon: <Image style={{ width: 55, height: 60, marginTop: 10 }} source={emergency_donor} />, title: 'Emergency Donors', route: 'EmergencyDonors' }
-    ]
-    const BloodDonationStats = [
-        { blood_grp: 'A+', demand: 10000, icon: blood_drop },
-        { blood_grp: 'O+', demand: 1000, icon: blood_drop },
-        { blood_grp: 'B+', demand: 10500, icon: blood_drop },
-        { blood_grp: 'AB+', demand: 10000, icon: blood_drop },
-        { blood_grp: 'A-', demand: 2000, icon: blood_drop },
-        { blood_grp: 'O-', demand: 1000, icon: blood_drop },
-        { blood_grp: 'B-', demand: 100, icon: blood_drop },
-        { blood_grp: 'AB-', demand: 700, icon: blood_drop },
-    ]
-    const RequestData = [
-        { Name: 'Zulfiqar Khan', Address: 'Agha Khan Hospital Karachi', Blood_grp: 'O-' },
-        { Name: 'Zulfiqar Khan', Address: 'Agha Khan Hospital Karachi', Blood_grp: 'O-' },
-        { Name: 'Zulfiqar Khan', Address: 'Agha Khan Hospital Karachi', Blood_grp: 'O-' },
-        { Name: 'Zulfiqar Khan', Address: 'Agha Khan Hospital Karachi', Blood_grp: 'O-' },
-        { Name: 'Zulfiqar Khan', Address: 'Agha Khan Hospital Karachi', Blood_grp: 'O-' }
-    ]
-    const BloodStatDrop = ({ blood_grp, demand, icon }) => {
-        return (
-            <View style={{
-                flex: 1,
-                alignItems: 'center',
-                justifyContent: 'center',
-            }}>
-                <View style={{}}>
-                    <Image style={{ width: 35, height: 45 }} source={icon} />
-                </View>
-                <View style={{ alignItems: 'center', justifyContent: 'center', }}>
-                    <Text style={{ fontSize: 14, color: '#353535', textAlign: 'center' }}>{blood_grp}</Text>
-                </View>
-            </View>
-        );
-    }
+        { icon: <Image style={{ width: 70, height: 90 }} source={blood_bank_icon} />, title: 'Blood Bank', route: 'My Organizations' },
+        { icon: <Image style={{ width: 55, height: 60, marginTop: 10 }} source={emergency_donor} />, title: 'Emergency Donors', route: 'EmergencyDonors' },
+    ];
 
-    const HomeBox = ({ icon, title, route }) => {
-        return (
-            <TouchableOpacity style={{
-                height: 120,
-                flex: 1,
-                borderColor: '#B6B6B6',
-                borderWidth: 1,
-                alignItems: 'center',
-                borderRadius: 10,
-            }}
-                onPress={() => { navigation.navigate(route) }}
-            >
-                <View style={{ height: 80 }}>
-                    {icon}
+    const BloodStatDrop = ({ blood_grp, icon }) => (
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+            <Image style={{ width: 35, height: 45 }} source={icon} />
+            <Text style={{ fontSize: 13, color: '#353535', textAlign: 'center', marginTop: 2 }}>{blood_grp}</Text>
+        </View>
+    );
+
+    const HomeBox = ({ icon, title, route }) => (
+        <TouchableOpacity style={styles.homeBox} onPress={() => navigation.navigate(route)}>
+            <View style={{ height: 80 }}>{icon}</View>
+            <View style={styles.homeBoxLabel}>
+                <Text style={{ fontSize: 13, color: '#353535', textAlign: 'center' }}>{title}</Text>
+            </View>
+        </TouchableOpacity>
+    );
+
+    const RequestBox = ({ data }) => (
+        <View style={styles.requestBox}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                <View style={{ flex: 1 }}>
+                    <Text style={{ fontWeight: '600', fontSize: 18, color: '#353535' }}>{data.userName}</Text>
+                    <Text style={{ paddingVertical: 3, color: '#969696' }} numberOfLines={1}>{data.hospitalName}</Text>
                 </View>
-                <View style={{ alignItems: 'center', justifyContent: 'center', height: 40, paddingBottom: 2, width: '100%' }}>
-                    <Text style={{ fontSize: 14, color: '#353535', textAlign: 'center' }}>{title}</Text>
-                </View>
-            </TouchableOpacity>
-        );
-    }
-    const RequestBox = ({ data }) => {
-        return (
-            <View style={{ borderRadius: 10, borderColor: '#B6B6B6', borderWidth: 1, padding: 10, marginBottom: 10 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <View>
-                        <Text style={{ fontWeight: 600, fontSize: 20, color: '#353535' }}>{data.Name}</Text>
-                        <Text style={{ paddingVertical: 3, color: '#969696' }}>{data.Address}</Text>
-                    </View>
-                    <View style={{}}>
-                        <FontAwesomeIcon icon={faDroplet} size={45} color="#DE0A1E" />
-                        <Text style={{ color: 'white', position: 'absolute', right: 14, marginTop: 14, fontWeight: 'bold', fontSize: 16 }}>{data.Blood_grp}</Text>
-                    </View>
-                </View>
-                <View style={{ margin: 2, marginTop: 4, flex: 1, height: 1, backgroundColor: '#B6B6B6' }} />
-                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-evenly', width: '100%' }}>
-                    <TouchableOpacity style={{ alignItems: 'center', backgroundColor: 'white', borderRadius: 10, paddingVertical: 8, width: '50%' }}>
-                        <Text style={{ fontSize: 17, color: '#8C8C8C', }}>Decline</Text>
-                    </TouchableOpacity>
-                    <View style={{ marginTop: 10, height: '100%', width: 1, backgroundColor: '#8C8C8C' }} />
-                    <TouchableOpacity onPress={() => {
-                        navigation.navigate('ReceiversList')
-                    }} style={{ alignItems: 'center', backgroundColor: '#00000000', borderRadius: 3, paddingVertical: 8, width: '50%' }}>
-                        <Text style={{ fontSize: 17, color: '#DE0A1E' }}>Donate Now</Text>
-                    </TouchableOpacity>
+                <View>
+                    <FontAwesomeIcon icon={faDroplet} size={45} color="#DE0A1E" />
+                    <Text style={{ color: 'white', position: 'absolute', right: 12, marginTop: 14, fontWeight: 'bold', fontSize: 14 }}>{data.bloodType}</Text>
                 </View>
             </View>
-        );
-    }
+            <View style={styles.divider} />
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-evenly' }}>
+                <TouchableOpacity style={styles.requestActionBtn}>
+                    <Text style={{ fontSize: 16, color: '#8C8C8C' }}>Skip</Text>
+                </TouchableOpacity>
+                <View style={styles.verticalDivider} />
+                <TouchableOpacity
+                    style={styles.requestActionBtn}
+                    onPress={() => navigation.navigate('DonationRequestInfo', { docId: data.id })}
+                >
+                    <Text style={{ fontSize: 16, color: '#DE0A1E' }}>Donate Now</Text>
+                </TouchableOpacity>
+            </View>
+        </View>
+    );
 
     useEffect(() => {
+        const uid = auth().currentUser?.uid;
+        if (!uid) return;
 
-        const userRef = firestore().collection('users').doc(auth().currentUser.uid);
+        firestore().collection('users').doc(uid).get()
+            .then(doc => { if (doc.exists) setDetails(doc.data()); })
+            .catch(() => {});
 
-        userRef.get().then((doc) => {
-            if (doc.exists) {
-                setDetails(doc.data());
-            } else {
-                console.log('Document doesnot exist.');
-            }
-        }).catch((error) => {
-            console.log('Error getting document:', error);
-        });
-
+        setLoadingRequests(true);
+        firestore()
+            .collection('requests')
+            .where('uid', '!=', uid)
+            .limit(10)
+            .get()
+            .then(snapshot => {
+                const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                setRequests(data);
+            })
+            .catch(() => setRequests([]))
+            .finally(() => setLoadingRequests(false));
     }, []);
 
     return (
         <SafeAreaView style={styles.container}>
-            {userDetails?.name ? <HomeHeader title={"Hello! " + userDetails?.name} navigation={navigation} isOrgHeader={false} /> : <Text>Loading</Text>}
+            {userDetails?.name
+                ? <HomeHeader title={'Hello! ' + userDetails.name} navigation={navigation} isOrgHeader={false} />
+                : <View style={{ height: 56 }} />
+            }
 
-            <View style={styles.header}>
+            <View style={styles.slideshowContainer}>
                 <Text style={styles.headingText}>Are You Looking for Blood?</Text>
                 <Slideshow />
             </View>
+
             <View style={{ alignItems: 'center', width: '100%', paddingHorizontal: 12, flex: 1 }}>
                 <View style={styles.boxRow}>
-                    {HomeBoxData.map((data) => <HomeBox icon={data.icon} title={data.title} route={data.route} />)}
+                    {HomeBoxData.map((item, i) => (
+                        <HomeBox key={i} icon={item.icon} title={item.title} route={item.route} />
+                    ))}
                 </View>
-                <ScrollView style={styles.scrollView}>
+
+                <ScrollView style={{ width: '100%' }} showsVerticalScrollIndicator={false}>
+
+                    {/* AI Health Assistant Banner */}
+                    <TouchableOpacity
+                        style={styles.aiCard}
+                        onPress={() => navigation.navigate('HealthChatbot')}
+                        activeOpacity={0.85}
+                    >
+                        <View style={styles.aiIconWrapper}>
+                            <FontAwesomeIcon icon={faRobot} size={22} color="white" />
+                        </View>
+                        <View style={{ flex: 1, marginLeft: 12 }}>
+                            <Text style={styles.aiCardTitle}>AI Health Assistant</Text>
+                            <Text style={styles.aiCardSubtitle}>Ask about eligibility, prep tips & more</Text>
+                        </View>
+                        <FontAwesomeIcon icon={faArrowRight} size={14} color="white" />
+                    </TouchableOpacity>
+
                     <View style={styles.bloodStatsContainer}>
-                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', width: '100%', paddingHorizontal: 5, alignItems: 'center' }}>
-                            <Text style={{ color: '#353535' }}>Blood Needed</Text>
-                            <TouchableOpacity style={{ flexDirection: 'row', gap: 2, alignItems: 'center' }}>
-                                <FontAwesomeIcon icon={faLocationDot} size={13} color='#969696' />
-                                <Text style={{ color: '#969696' }}>Karachi</Text>
-                            </TouchableOpacity>
+                        <View style={styles.bloodStatsHeader}>
+                            <Text style={{ color: '#353535', fontSize: 14 }}>Blood Groups</Text>
+                            <View style={{ flexDirection: 'row', gap: 4, alignItems: 'center' }}>
+                                <FontAwesomeIcon icon={faLocationDot} size={12} color="#969696" />
+                                <Text style={{ color: '#969696', fontSize: 12 }}>Karachi</Text>
+                            </View>
                         </View>
                         <View style={styles.bloodStatsRow}>
-                            {BloodDonationStats.map((data) => <BloodStatDrop blood_grp={data.blood_grp} demand={data.demand} icon={data.icon} />)}
+                            {BLOOD_GROUPS.map(grp => (
+                                <BloodStatDrop key={grp} blood_grp={grp} icon={blood_drop} />
+                            ))}
                         </View>
                     </View>
+
                     <View style={styles.donationReqsContainer}>
-                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', width: '100%', paddingHorizontal: 5, alignItems: 'center', marginBottom: 10 }}>
-                            <Text style={{ color: '#353535', fontSize: 18 }}>Donation Requests</Text>
+                        <View style={styles.sectionHeader}>
+                            <Text style={{ color: '#353535', fontSize: 17 }}>Donation Requests</Text>
                             <TouchableOpacity onPress={() => navigation.navigate('ReceiversList')}>
                                 <Text style={{ color: '#969696', fontSize: 12 }}>See all</Text>
                             </TouchableOpacity>
                         </View>
-                        {RequestData.map((data) => <RequestBox data={data} />)}
-                        <View style={{ height: 55 }}></View>
+
+                        {loadingRequests ? (
+                            <ActivityIndicator color="#DE0A1E" style={{ marginTop: 20 }} />
+                        ) : requests.length === 0 ? (
+                            <View style={styles.emptyState}>
+                                <FontAwesomeIcon icon={faDroplet} size={36} color="#B6B6B6" />
+                                <Text style={styles.emptyText}>No donation requests at the moment.</Text>
+                                <Text style={styles.emptySubText}>Check back later or post your own request.</Text>
+                            </View>
+                        ) : (
+                            requests.map(item => <RequestBox key={item.id} data={item} />)
+                        )}
+
+                        <View style={{ height: 60 }} />
                     </View>
                 </ScrollView>
             </View>
         </SafeAreaView>
     );
-}
+};
 
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        // alignItems: 'center',
         backgroundColor: 'white',
     },
     headingText: {
         color: 'black',
-        fontSize: 18,
-        paddingHorizontal: 12
+        fontSize: 16,
+        paddingHorizontal: 12,
+        marginBottom: 4,
     },
-    header: {
+    slideshowContainer: {
         marginTop: 6,
         width: '100%',
-        height: 200,
+        height: 210,
     },
     boxRow: {
         marginTop: 10,
         flexDirection: 'row',
         width: '100%',
-        gap: 10
+        gap: 10,
     },
-    scrollView: {
-        width: '100%'
-    },
-    bloodStatsContainer: {
-        height: 100,
-        marginTop: 10,
+    homeBox: {
+        height: 120,
+        flex: 1,
         borderColor: '#B6B6B6',
         borderWidth: 1,
         alignItems: 'center',
         borderRadius: 10,
     },
+    homeBoxLabel: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        height: 40,
+        paddingHorizontal: 4,
+        width: '100%',
+    },
+    aiCard: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#DE0A1E',
+        borderRadius: 12,
+        padding: 14,
+        marginTop: 12,
+        marginBottom: 2,
+    },
+    aiIconWrapper: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: 'rgba(255,255,255,0.25)',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    aiCardTitle: {
+        color: 'white',
+        fontSize: 15,
+        fontWeight: '600',
+    },
+    aiCardSubtitle: {
+        color: 'rgba(255,255,255,0.8)',
+        fontSize: 12,
+        marginTop: 2,
+    },
+    bloodStatsContainer: {
+        marginTop: 12,
+        borderColor: '#B6B6B6',
+        borderWidth: 1,
+        borderRadius: 10,
+        paddingVertical: 8,
+        paddingHorizontal: 4,
+    },
+    bloodStatsHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        paddingHorizontal: 6,
+        marginBottom: 6,
+    },
     bloodStatsRow: {
         flexDirection: 'row',
-        gap: 5,
-        marginTop: 8
+        gap: 4,
     },
     donationReqsContainer: {
         width: '100%',
-        marginTop: 10,
-    }
+        marginTop: 12,
+    },
+    sectionHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        paddingHorizontal: 4,
+        alignItems: 'center',
+        marginBottom: 10,
+    },
+    requestBox: {
+        borderRadius: 10,
+        borderColor: '#B6B6B6',
+        borderWidth: 1,
+        padding: 10,
+        marginBottom: 10,
+    },
+    divider: {
+        marginVertical: 6,
+        height: 1,
+        backgroundColor: '#B6B6B6',
+    },
+    verticalDivider: {
+        height: '100%',
+        width: 1,
+        backgroundColor: '#B6B6B6',
+    },
+    requestActionBtn: {
+        alignItems: 'center',
+        paddingVertical: 6,
+        width: '48%',
+    },
+    emptyState: {
+        alignItems: 'center',
+        paddingVertical: 40,
+        gap: 8,
+    },
+    emptyText: {
+        color: '#353535',
+        fontSize: 15,
+        marginTop: 8,
+    },
+    emptySubText: {
+        color: '#969696',
+        fontSize: 13,
+        textAlign: 'center',
+    },
 });
 
 export default HomeScreen;
